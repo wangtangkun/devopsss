@@ -13,3 +13,9 @@ class FileForm(NewModelForm):
         fields=["project","file_field"]   #页面上只显示 项目名、上传文件框
 
 
+class GitForm(NewModelForm):
+
+    class Meta:
+        model=Issue
+        fields=["project","backup"]
+

@@ -7,6 +7,13 @@ from utils.pagination import Pagination
 import json
 from utils.ansible2.inventory import Inventory
 from utils.ansible2.runner import AdHocRunner,PlayBookRunner
+import os
+from xitong import settings
+
+
+from utils.git_helper import GitRepo
+
+
 
 def Projectlist(request):
     '''
@@ -35,6 +42,14 @@ def Create_edit_project(request,pk=0):
         form=ProjectForm(request.POST,instance=project)
         #print(form.is_valid())
         if form.is_valid():
+
+
+            #项目路径  settings里设置的git_path + 项目名组成   (指定git目录,检测这个目录是否是git目录，如果不是则从远程仓库克隆项目到这个目录下)
+            path = settings.git_path+form.cleaned_data["name"]
+
+            #传入路径，执行GitRepo类的 is_dir方法（检测linux服务器上是否存在这个路径,不存在则从远程git仓库克隆到服务器里）
+            GitRepo(path).is_dir(form.cleaned_data["git_path"])
+
 
             #project表中创建者字段定义为当前登录用户
             form.instance.create_user=request.account

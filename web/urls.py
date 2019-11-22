@@ -52,9 +52,19 @@ urlpatterns = [
     url(r'^delcron/(\d+)$', del_cron, name="del_cron"),
     url(r'^delcron/(\d+)$', del_cron, name="del_cron"),
 
-    #更新相关
-        #展示页面
+#更新相关
+    #展示页面
     url(r'^update/$', update, name="update"),
-        #上传文件页面
+    #上传文件页面
     url(r'^file/$', create_file, name="create_file"),
+
+
+    #更新git页面
+    url(r'^git/$', create_git, name="create_git"),
+        #获取分支信息（显示在更新git页面）
+    url(r'get_branch/(\d+)$',get_branch),
+        #获取tag信息（显示在更新git页面）
+    url(r'get_tag/(\d+)$',get_tag),
+        #获取commit信息（显示在更新git页面）
+    url(r'get_commit/(\d+)/(\w+)$',get_commit)
 ]

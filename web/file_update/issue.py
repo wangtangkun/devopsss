@@ -1,9 +1,11 @@
 from django.shortcuts import render
-from .issue_form import FileForm
+from .issue_form import FileForm,GitForm
 from django.http.response import JsonResponse
-from web.models import Issue
+from web.models import Issue,Project
 from utils.pagination import Pagination
-
+from utils.ansible2.inventory import Inventory
+from utils.ansible2.runner import AdHocRunner,PlayBookRunner
+from utils.git_helper import GitRepo
 
 import time,os
 
@@ -67,13 +69,83 @@ def create_file(request):
 
 
 
+####git更新：
+
+#
+def create_git(request):
+    '''
+    更新git
+    :param request:
+    :return:
+    '''
+    form = GitForm()
+    if request.method == "POST":
+        form = GitForm(request.POST)
+        print(request.POST)
+        t = int(time.time())
+        if form.is_valid():
+            print(form.cleaned_data)
+            form.instance.user = request.account
+            form.instance.upload_path = t
+            form.instance.type = "1"   #更新类型  1：git更新
+            path=form.cleaned_data["project"].path
+            if request.POST.get("type") =="bra":
+                GitRepo(path).checkout(request.POST.get("bra_name"),request.POST.get("com_name"))
+            else:
+                GitRepo(path).checkout(request.POST.get("tag_name"),type="tag")
+            form.save()
+            return JsonResponse({"status": 0, "msg": "操作成功"})
+        else:
+            return JsonResponse({"status": 1, "msg": "操作失败,失败原因为{}".format(form.errors)})
+    return render(request, "file_update/git_create.html", {"form": form})
 
 
+def get_branch(request,pk):
+    '''
+    通过获取到的pk，查找项目，获取项目的分支
+    :param request:
+    :param pk:   项目id
+    :return:
+    '''
+    #查询项目对象
+    project=Project.objects.filter(pk=pk).first()
+    #获取项目地址
+    path=project.path
+    #传入项目地址,执行get_branch方法   res=获取分支信息
+    res=GitRepo(path).get_branch()
+    #返回给前端页面分支信息
+    return JsonResponse({"branch":res})
 
-## 初始化
-## 初始化日志 ansible api 去执行playbook
+
+def get_commit(request,pk,bra):
+    '''
+    获取commit提交信息
+    :param request:
+    :param pk:  项目id
+    :param bra: 分支信息
+    :return:
+    '''
+    #获取项目对象
+    project = Project.objects.filter(pk=pk).first()
+    # 获取项目地址
+    path = project.path
+    #传入项目地址, 执行get_commit方法  传入分支信息，   res=获取commit信息
+    res = GitRepo(path).get_commit(bra)
+    print("ressss",res)
+    #将commit信息传给前端
+    return JsonResponse({"commits": res})
 
 
-# 实现项目的增删该查
+def get_tag(request,pk):
+    '''
+    获取tag信息
+    :param request:
+    :param pk:
+    :return:
+    '''
+    project=Project.objects.filter(pk=pk).first()
+    path=project.path
+    res=GitRepo(path).get_tag()
+    return JsonResponse({"tag":res})
 
 
