@@ -75,7 +75,12 @@
         $("#bt").removeClass("hidden")
         $("#file_updatelist").addClass("active")
         $("#command").addClass("active")
-
+        $(".git-btn").on("click", function () {
+            ui.box({
+                "title": "git更新",
+                "remote": "{% url 'create_git' %}"
+            })
+        })
         $(".file-btn").on("click", function () {
             ui.box({
                 "title": "文件上传",

@@ -5,7 +5,9 @@ from git import Git
 
 
 #本地的git目录
-#repo=Repo(r"G:\test\untitled\xitong")
+# repo=Repo(r"G:\test\untitled\xitong")
+#
+# repo.
 
 # git add .
 # repo.index.add(["a.txt"])  #将a.txt文件放入缓存区，相当于git add .  只要运行当前py即可 以下不再描述
@@ -79,7 +81,8 @@ from git import Git
 #####另一种方法, Git模块:
 
 #本地git目录
-# r=Git("D:\新电脑\zdh")
+#r=Git("D:\新电脑\zdh")
+
 
 #将文件加入缓存区
 # r.add("c.py")

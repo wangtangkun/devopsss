@@ -73,60 +73,89 @@
 </form>
 {% block js %}
     <script>
-        $("#tag_div").hide();
+        $("#tag_div").hide(); //tag选择框默认不显示
+        //更新类型变换时（分支更新变成了tag更新）
         $("#type_select_div").change(function () {
+            //定义type全局变量内容： type_select为选中状态的输入框的内容（内容为input框的value值）
             var type=$(".type_select:checked").val()
+            //如果type 为bra  （选择分支更新）
             if (type=="bra"){
+                //tag选择框隐藏，分支信息和commit信息 选择框显示
                 $("#tag_div").hide();
                 $("#bra_div").show();
                 $("#com_div").show();
-            }else {
+            }
+            //tag选择框显示，分支信息和commit信息 选择框隐藏
+    //前端显示tag信息
+            else
+                {
                 $("#bra_div").hide();
                 $("#com_div").hide();
                 $("#tag_div").show();
-                 project_id=$("#id_project").val();
+                //定义project_id变量：获取项目选择框内容（内容实际为是项目id）
+                project_id=$("#id_project").val();
+                ////get后台（实际是传回项目id,并执行后台get_tag方法  目的:获取tag信息）
                 $.get({
-                url:"/get_tag/"+project_id, //不能用name来写
+                    url:"/web/get_tag/"+project_id, //不能用name来写
+                //获取后台数据
                 success:function (res) {
+                    //取出tag信息
                     data=res.tag
+                    //循环tag信息,填充到tag选择框中
                     data.forEach(function (bra) {
                         $("#tag_select").append("<option value="+bra+">"+bra+"</option>")
                     })
-                }
-            })
+            }
+        })
             }
 
         })
+    //前端显示分支信息：
+        //如果项目名选择框发生了变化
         $("#id_project").change(function () {
+            //获取项目选择框内容（内容实际为是项目id）
             project_id=$("#id_project").val();
-            $("#bra_select").empty();
-            $("#commit_select").empty();
-            $("#bra_select").append("<option value=0>------------</option>")
+            $("#bra_select").empty();  //分支选择框清空
+            $("#commit_select").empty();  //commit选择框清空
+            $("#bra_select").append("<option value=0>------------</option>") //分支选择框默认显示--------
+            //get后台（实际是传回项目id,并执行后台get_branch方法  目的:获取分支信息）
             $.get({
-                url:"/get_branch/"+project_id, //不能用name来写
+                url:"/web/get_branch/"+project_id, //不能用name来写
+                //从后台获取到数据（分支信息）
                 success:function (res) {
+                    //从数据中取出branch信息
                     data=res.branch
+                    //循环branch信息，并将信息填充到分支选择框中
                     data.forEach(function (bra) {
                         $("#bra_select").append("<option value="+bra+">"+bra+"</option>")
                     })
                 }
             })
         })
+    //前端显示commit信息
+         //如果分支选择框发生了改变（commit提交信息根据branch分支信息获取,不同的branch分支有各自的commit信息）
          $("#bra_select").change(function () {
+             //获取当前选择的 项目id , 分支信息
             project_id=$("#id_project").val();
             bra=$("#bra_select").val();
+            //commit选择框清空,并默认显示-------
             $("#commit_select").empty();
             $("#commit_select").append("<option value=0>------------</option>")
+             //get后台，访问/get_commit/"+project_id+"/"+bra   实际是传回项目id  分支信息，执行后台get_commit方法获取commit信息
             $.get({
-                url:"/get_commit/"+project_id+"/"+bra, //不能用name来写
+                url:"/web/get_commit/"+project_id+"/"+bra, //不能用name来写
+                //获取后台传来的数据
                 success:function (res) {
+                    //取出commit信息
                     data=res.commits
+                    //循环并填充到commit选择框中
                     data.forEach(function (c) {
                         $("#commit_select").append("<option value="+c.id+">"+c.msg+"</option>")
                     })
                 }
             })
         })
+        //提交更新
         $("#createBtn").on("click", function () {
             Net.post({
                 url: "{% url 'create_git' %}",
