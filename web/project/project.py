@@ -10,9 +10,9 @@ from utils.ansible2.runner import AdHocRunner,PlayBookRunner
 import os
 from xitong import settings
 
+from utils.ansible_helper import Remote_directory
 
 from utils.git_helper import GitRepo
-
 
 
 def Projectlist(request):
@@ -50,6 +50,14 @@ def Create_edit_project(request,pk=0):
             #传入路径，执行GitRepo类的 is_dir方法（检测linux服务器上是否存在这个路径,不存在则从远程git仓库克隆到服务器里）
             GitRepo(path).is_dir(form.cleaned_data["git_path"])
 
+
+
+            #往后端主机里创建项目路径和备份路径（方便后面发布 git更新项目时，devops通过ansible copy模块将项目推送到远程主机上进行发布、更新）：
+            backup_path = settings.server_backup_path + form.cleaned_data["name"]
+            mkdir_status = Remote_directory(form.cleaned_data["server_host"],backup_path,form.cleaned_data["path"])
+            print("mkdir_status",mkdir_status)
+            if not mkdir_status:
+                return JsonResponse({"status": 1, "msg": "远程主机创建目录失败!"})
 
             #project表中创建者字段定义为当前登录用户
             form.instance.create_user=request.account

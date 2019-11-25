@@ -203,7 +203,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
+#项目目录
 git_path="/updata/git/"
+
+#后端主机 代码备份目录
+server_backup_path="/opt/devops_backup/"
+
+
 
 
 STATIC_URL = '/static/'

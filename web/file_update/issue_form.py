@@ -1,4 +1,4 @@
-from web.models import Issue
+from web.models import Issue,Project
 from utils.auth import NewModelForm
 from django.core.exceptions import ValidationError
 from django import forms
@@ -18,4 +18,14 @@ class GitForm(NewModelForm):
     class Meta:
         model=Issue
         fields=["project","backup"]
+
+class Upload_one(NewModelForm):
+
+    def __init__(self,host_list,*args,**kwargs):
+        super(Upload_one,self).__init__(*args,**kwargs)
+        #通过传入的host_list对象列表，定义server_host字段选项
+        self.fields["server_host"].choices=[(du.pk,du.hostip) for du in host_list]
+    class Meta:
+        model=Project
+        fields=["server_host"]
 

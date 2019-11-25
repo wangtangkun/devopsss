@@ -119,13 +119,15 @@ class GitRepo():
         #进入git目录,并回退到远程仓库
         subprocess.getoutput("cd {} && git reset --hard origin/{}".format(self.path,active))
 
-        #使用commit 哈希来改变指定git目录版本
+        # 使用commit 哈希来改变指定git目录版本
         Repo(self.path).index.reset(commit=commit, head=True)
 
 
+        #     # 使用tag改变git目录版本
         if type !=None:
-            # 使用tag改变git目录版本
+            subprocess.getoutput("cd {} && git reset --hard origin/{}".format(self.path, active))
             Git(self.path).checkout(msg)
+
 
 ### 实现
 # 发布

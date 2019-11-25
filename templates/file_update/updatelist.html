@@ -46,8 +46,9 @@
                                 <td>{{ update.get_status_display }}</td>
                                 <td>{{ update.create_time|date:"Y-m-d h:i:s" }}</td>
                                 <td>
-                                    <div href="#" data-url="#" class="btn btn-sm btn-danger del-btn">开始更新</div>
+                                    <div href="" data-url="{% url "upload_one" update.pk %}" class="btn btn-sm btn-success upload-btn">开始更新</div>
                                     <div href="#" data-url="#" class="btn btn-sm btn-info detail-btn">详情</div>
+{#                                     <div href="#" data-url="#" class="btn btn-sm btn-danger del-btn">删除</div>#}
                                 </td>
                             </tr>
                         {% endfor %}
@@ -93,6 +94,25 @@
                 "remote": $(this).attr('data-url')
             })
         })
+
+        $(".upload-btn").on("click", function (e) {
+            ui.box({
+                "title": "发布、更新项目",
+                "remote": $(this).attr('data-url')
+            })
+        })
+
+{#        $(".upload-btn").on("click", function (e) {#}
+{#            e.preventDefault(); //取消原来的动作#}
+{#            var url=$(this).attr('data-url')#}
+{#            ui.confirm("你确认要更新吗?",function () {#}
+{#                console.log($(this))#}
+{#                Net.get({#}
+{#                    url:url,#}
+{#                    reload:true#}
+{#                })#}
+{#            })#}
+{#        })#}
 
         $(".del-btn").on("click", function (e) {
             e.preventDefault(); //取消原来的动作

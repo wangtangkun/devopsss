@@ -66,5 +66,9 @@ urlpatterns = [
         #获取tag信息（显示在更新git页面）
     url(r'get_tag/(\d+)$',get_tag),
         #获取commit信息（显示在更新git页面）
-    url(r'get_commit/(\d+)/(\w+)$',get_commit)
+    url(r'get_commit/(\d+)/(\w+)$',get_commit),
+
+#发布、更新项目
+    #发布或更新一台主机（灰度发布特性先更新一台主机）
+    url(r"upload_one/(\d+)$",upload_one,name="upload_one")
 ]

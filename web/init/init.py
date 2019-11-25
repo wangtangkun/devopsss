@@ -66,6 +66,7 @@ def create_initlog(request,pk=0):
     if request.method=="POST":
         form=InitLogForm(request.POST)
         if form.is_valid():
+            print("form.cleaned_data",form.cleaned_data["init"])
             #InitLog表中创建者字段定义为当前登录用户
             form.instance.user=request.account
 

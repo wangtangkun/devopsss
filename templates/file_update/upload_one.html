@@ -1,0 +1,140 @@
+<form class="form-horizontal" id="createForm" action="" method="post">{% csrf_token %}
+
+  <div class="box-body">
+        <div class="box-body table-responsive no-padding">
+                    <table class="table table-hover text-center">
+                        <tr class="text-center">
+                            <th>项目名称</th>
+                            <th>发布类型</th>
+                            <th>发布人</th>
+                        </tr>
+                        {% for update in issue %}
+                            <tr>
+                                <td>{{ update.project.name}}</td>
+                                <td>{{ update.get_type_display }}</td>
+                                <td>{{ update.user.name }}</td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+
+                </div>
+
+        <div class="form-group">
+            <hr>
+            <label class="col-sm-2 control-label">发布类型
+                <span class="text-red">*</span>
+            </label>
+            <div class="col-sm-9" id="type_select_div">
+            <label>
+                <input type="radio" name="type" class="minimal type_select" value="hd" checked>灰度发布(更新)
+            </label>
+            <label>
+                <input type="radio" name="type" class="minimal type_select" value="dx">发布(更新)
+            </label>
+                </div>
+        </div>
+
+{#  单选select#}
+        <div class="form-group" id="hd_div">
+            <label class="col-sm-2 control-label">发布主机(单选)
+                <span class="text-red">*</span>
+            </label>
+            <div class="col-sm-9">
+                <select class="form-control" id="hd_select" name="hd_name">
+                    <option value=0>------------</option>
+                    {% for host in hosts  %}
+                    <option value={{host.hostip}}>{{host.hostip}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+        </div>
+
+{#    多选select#}
+      <div class="box-body" id="dx_div">
+        {% for field in form %}
+            <div class="form-group{% if field.errors %} has-error{% endif %}">
+            <label class="col-sm-2 control-label">发布主机(多选)
+                <span class="text-red">*</span>
+            </label>
+                <div class="col-sm-9">
+                    {{ field }}
+                </div>
+                <span class="help-block">
+                  {% for error in field.errors %}
+                      {{ error }}
+                  {% endfor %}
+                    {{ field.help_text }}
+                </span>
+            </div>
+        {% endfor %}
+      </div>
+    {% for foo in  issue %}
+        <div class="box-footer text-center">
+            <button type="reset" class="btn btn-warning">清空</button>
+            <button id="CreateBtn" tj_id="{{ foo.id }}" type="button" class="btn btn-info">提交</button>
+            <p class="text-center"><i id='iconWait'></i></p>
+        </div>
+    </div>
+ {% endfor %}
+</form>
+
+
+
+{% block js %}
+    <script>
+        $("#dx_div").hide(); //dx选择框默认不显示
+        $("#type_select_div").change(function () {
+            //定义type全局变量内容： type_select为选中状态的输入框的内容（内容为input框的value值）
+            var type=$(".type_select:checked").val()
+            //如果type 为hd  （选择单选更新）
+            if (type=="hd"){
+                //dx选择框隐藏，单选信息选择框显示
+                $("#dx_div").hide();
+                $("#hd_div").show();
+            }
+            //dx选择框显示，单选信息选择框隐藏
+    //前端显示dx信息
+            else {
+                $("#hd_div").hide();
+                $("#dx_div").show();
+                 $("select").select2(); //为所有select添加多选+样式
+            }
+        })
+
+        //提交更新，使用ajax确认框
+        $("#CreateBtn").on("click", function (e) {
+              swal({
+                title: "确定更新?",
+                text: "The directory of back-end host projects running this project will change after the update!",
+                icon: "warning",
+                buttons: true,
+                dangerMode: true,
+            })
+                .then((willDelete) => {
+                    if (willDelete) {
+
+                        $.ajax({
+                            url: '/web/upload_one/' +$(this).attr('tj_id'),
+                            data:$("#createForm").serialize(),
+                            type:"post",
+                            btn:$("#CreateBtn"),
+                            go:"/web/updata/",
+                        success: (res) => {
+
+                                if (res.status === 1) {
+                                    swal({
+                                        text:"没有选择主机!",
+                                        icon: "warning",
+                                    });
+                                }
+                            }
+                        });
+                    } else {
+                        swal(" Cancel the update!");
+                    }
+                });
+        })
+
+    </script>
+{% endblock %}
