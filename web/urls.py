@@ -53,8 +53,10 @@ urlpatterns = [
     url(r'^delcron/(\d+)$', del_cron, name="del_cron"),
 
 #更新相关
-    #展示页面
+    #展示更新页面
     url(r'^update/$', update, name="update"),
+    #展示回滚页面
+    url(r'^gobackall/$', gobackall, name="gobackall"),
     #上传文件页面
     url(r'^file/$', create_file, name="create_file"),
 
@@ -69,6 +71,18 @@ urlpatterns = [
     url(r'get_commit/(\d+)/(\w+)$',get_commit),
 
 #发布、更新项目
-    #发布或更新一台主机（灰度发布特性先更新一台主机）
-    url(r"upload_one/(\d+)$",upload_one,name="upload_one")
+    #发布或更新一台主机（灰度发布特性先更新一台主机（下线主机-更新代码-测试））
+    url(r"upload_one/(\d+)$",upload_one,name="upload_one"),
+
+    #测试通过,上线主机
+    url(r"sucessfully/(\d+)$",sucessfully,name="sucessfully"),
+    #详情页
+    url(r"issue_detail/(\d+)$",issue_detail,name="issue_detail"),
+
+    #更新剩余主机
+    url(r"update_again/(\d+)$",update_again,name="update_again"),
+    #测试通过主机 上线剩余主机
+    url(r"success_again/(\d+)$",success_again,name="success_again"),
+    #回滚
+    url(r"go_back/(\d+)$",go_back,name="go_back"),
 ]

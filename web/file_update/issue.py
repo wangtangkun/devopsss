@@ -8,18 +8,36 @@ from utils.ansible2.runner import AdHocRunner, PlayBookRunner
 from utils.git_helper import GitRepo
 import time, os
 from xitong.settings import git_path
-
-
+#导入邮件模块，项目变更成功后后给项目人员发邮件
+from django.core.mail import send_mail
+from django.db.models import Q
 def update(request):
+    '''
+    更新列表
+    :param request:
+    :return:
+    '''
     search = request.GET.get("table_search", "")
-    # 根据项目名搜索
-    updateall = Issue.objects.filter(project__name__contains=search)
+    # 根据项目名、更新类型搜索  1 git    0文件
+    updateall = Issue.objects.filter(Q(project__name__contains=search)|Q(type__contains=search))
     pages = Pagination(request.GET.get("page", 1), updateall.count(), request.GET.copy(), 10)
     return render(request, "file_update/updatelist.html",
                   {"page_title": "更新列表", "updateall": updateall[pages.start:pages.end],
                    "page_html": pages.page_html})
 
-
+def gobackall(request):
+    '''
+    回滚列表
+    :param request:
+    :return:
+    '''
+    search = request.GET.get("table_search", "")
+    # 根据项目名、更新类型搜索  1 git    0文件
+    updateall = Issue.objects.filter(project__name__contains=search,status__in=["6","7"])
+    pages = Pagination(request.GET.get("page", 1), updateall.count(), request.GET.copy(), 10)
+    return render(request, "file_update/updatelist.html",
+                  {"page_title": "回滚列表", "updateall": updateall[pages.start:pages.end],
+                   "page_html": pages.page_html})
 def handle_uploaded_file(files, t):
     '''
     上传文件方法
@@ -64,7 +82,12 @@ def create_file(request):
             form.instance.user = request.account  # 创建者字段
             form.instance.upload_path = t  # 上传文件路径字段
             form.instance.type = "0"  # 当前状态字段
-            form.save()  # 保存在数据库中
+            issue=form.save()  # 保存在数据库中
+            # Host_Issue表保存issue字段、host字段
+            # 循环项目中的主机对象
+            for i in form.cleaned_data["project"].server_host.all():
+                # 新增保存issue字段、host字段
+                Host_Issue.objects.create(issue=issue, host=i)
             return JsonResponse({"status": 0, "msg": "操作成功"})
         else:
             return JsonResponse({"status": 1, "msg": "操作失败,失败原因为{}".format(form.errors)})
@@ -180,7 +203,7 @@ def upload_one(request,pk):
     运行测试
     成功后上线主机、不成功则根据之前备份的代码恢复项目
     :param request:
-    :param pk:  更新表数据的id
+    :param pk:  issue的id
     :return:
     '''
 
@@ -202,10 +225,6 @@ def upload_one(request,pk):
     if request.method == "POST":
         print("数据", request.POST)
         print("提交操作")
-        # 更新状态字段变为更新中
-        issue_first.status = "1"
-        # 保存
-        issue_first.save()
         #灰度发布（先发布一台）
         if request.POST["type"] == "hd":
             # 后端主机ip：
@@ -214,28 +233,45 @@ def upload_one(request,pk):
             if server_ip=="0":
                 return JsonResponse({"status": 1})
             # 后端主机对象
-            hd_host = Host.objects.filter(hostip=request.POST["hd_name"])
+            hd_host = Host.objects.filter(hostip=request.POST["hd_name"]).first()
             # # 执行nginx方法(下线主机)
-            # nginx_status = nginx(project.nginx_host.all(), project.nginx_conf, server_ip, "out")
+            # nginx_status = nginx(project.nginx_host.all(), project.nginx_conf, server_ip)
             # 执行server_push方法(备份远程主机代码,复制本地项目代码到远程主机项目中)
-            push_status = server_push(project.path, project.name, issue_first.upload_path, issue_first.type, hd_host)
+            push_status = server_push(project.path, project.name, issue_first.upload_path, issue_first.type, [hd_host])
+
+            # 主机更新变更表
+            update_status = Host_Issue.objects.filter(issue=issue_first, host=hd_host).first()
+            # 更新状态字段变为更新中
+            issue_first.status = "1"
+            # 保存
+            issue_first.save()
+            #主机更新表 状态变更保存
+            update_status.status= "1"
+            update_status.save()
             #如果nginx方法和server_push方法都执行成功
+            # 这里应该是 if push_status and nginx_status,测试不方便就不加nginx_status了
             if  push_status:
                 # 更新状态字段变为等待测试
                 issue_first.status = "2"
                 issue_first.save()
+                #主机更新变更表 status状态字段变更保存
+                update_status.status="2"
+                update_status.save()
                 return JsonResponse({"status":0,"msg":"更新成功!"})
             else:
                 # 更新状态字段变为更新失败
                 issue_first.status = "5"
                 issue_first.save()
+                update_status.status = "5"
+                update_status.save()
                 return JsonResponse({"status": 1, "msg": "更新失败!"})
 
     return render(request, "file_update/upload_one.html", {"issue": issue, "hosts": host_list, "form": form})
 
 
-def nginx(nginx_host, nginx_conf, server_ip, type):
+def nginx(nginx_host, nginx_conf, server_ip, type="out"):
     '''
+    只能操作单个后端主机，操作多个后端主机nginx方法 是下面的nginx_again方法
     根据nginx 让后端主机下线、上线
     :param nginx_host: 此项目的nginx主机
     :param nginx_conf: 此项目nginx 主机的配置文件
@@ -323,3 +359,181 @@ def ansible_helper(host_list, task):
     ret = runner.run(task)
     # ret.results_raw 返回结果（字典），如果有["ok"]这个key说明执行成功返回True，否则返回false
     return True if ret.results_raw["ok"] else False
+
+
+def sucessfully(request,pk):
+    '''
+    测试通过
+        找到当前issue表对象的主机更新表中status为2（等待测试）的主机(有肯能是一台，有可能是多台）,将这些主机上线。如果主机更新表没有status为0（等待更新）的主机（说明全部都更新了） issue表状态变为0（更新成功）
+    :param request:
+    :param pk: issue pk
+    :return:
+    '''
+    print("测试通过,进行上线操作!")
+    issue=Issue.objects.filter(pk=pk).first()
+    project=issue.project
+    #找到issue表对象的主机更新表等待测试的主机（一台或列表，所以这里不能first）
+    update_host=Host_Issue.objects.filter(issue=issue,status="2")
+    print("update_host",update_host)
+    status_list=[]
+    #循环update_host将其上线：
+    for i in update_host:
+        #执行上线，这里先不用nginx不方便测试,先直接通过了
+        # nginx_status = nginx(project.nginx_host.all(), project.nginx_conf, i.host.hostip, "up")
+        print("开始循环update_host")
+        nginx_status=True
+        print("nginx_status为True")
+        if nginx_status:
+           print("改变issue status为3")
+           issue.status=3     #测试通过
+           issue.save()
+           update_host.update(status="3")  # update 可以多条更新,不需要save
+           status_list.append(nginx_status)
+    #获取主机更新表：状态为0（等待更新）,issue=issue 的对象列表
+    wait_host=Host_Issue.objects.filter(issue=issue,status="0")
+    print("等待更新主机",wait_host)
+    print([i.host.hostip for i in wait_host],"等待更新的主机")
+    #如果没有等待更新的主机（说明已经全部更新）
+    if not wait_host:
+        print("已经没有等待更新主机!")
+        issue.status=4  #整体更新成功
+        issue.save()
+    if False in status_list:
+        return JsonResponse({"status":1,"msg":"测试失败"})
+    else:
+        return JsonResponse({"status": 0, "msg": "测试成功"})
+
+
+def issue_detail(request,pk):
+    '''
+    详情页
+    :param request:
+    :param pk:
+    :return:
+    '''
+    issue=Issue.objects.filter(pk=pk).first()
+    return render(request,"file_update/issue_detail.html",{"issue":issue})
+
+def update_again(request,pk):
+    '''
+    更新剩余主机
+    :param request:
+    :param pk:  issue pk
+    :return:
+    '''
+    #找到这个更新对象
+    issue = Issue.objects.filter(pk=pk).first()
+    # 改变更新状态： status=1(更新中)
+    issue.status = '1'
+    issue.save()
+    #根据issue表反向查找主机更新表状态为0（等待更新）的对象，获取的主机更新表对象列表
+    wait_hosts=issue.host_issue_set.filter(status="0")
+    #取出主机对象列表
+    server_host=[i.host for i in wait_hosts]
+
+#执行nginx_again
+        #server_host直接传入,由nginx_again循环取出后端主机ip
+    # nginx_status = nginx_again(issue.project.nginx_host.all(), issue.project.nginx_conf,server_host)
+
+
+#执行代码更新：
+    server_status=server_push(issue.project.path,issue.project.name,issue.upload_path,issue.type,server_host)
+    #这里应该是 if server_status and nginx_status,测试不方便就不加nginx_status了
+    if server_push:
+        # 更新状态字段变为等待测试
+        issue.status = "2"
+        issue.save()
+        # 主机更新变更表对线列表 status状态字段变更保存，直接用update更新多条，不用save
+        wait_hosts.update(status="2")
+        return JsonResponse({"status": 0, "msg": "更新成功!"})
+    else:
+        # 更新状态字段变为更新失败
+        issue.status = "5"
+        issue.save()
+        wait_hosts.update(status="5")
+        return JsonResponse({"status": 1, "msg": "更新失败!"})
+
+def nginx_again(nginx_host, nginx_conf, server_list, type="out"):
+    '''
+    通过nginx实现多个后端主机下线、上线
+    :param nginx_host: nginx机器
+    :param nginx_conf: nginx配置文件
+    :param server_list: 后端主机ip列表
+    :param type: up(上线)、out（下线），默认是out下线
+    :return:
+    '''
+    #循环取出后端主机ip并执行nginx下线操作
+    status_list=[]
+    for server in server_list:
+        status=nginx(nginx_host, nginx_conf, server.hostip, type="out")
+        status_list.append(status)
+    if False in status_list:
+        return  False
+    else:
+        return True
+
+
+def success_again(request,pk):
+    '''
+    更新剩余主机后，测试通过，找到issue对象中主机更新表状态为2（等待测试）的主机列表,上线剩余主机
+    :param request:
+    :param pk: issue pk
+    :return:
+    '''
+    issue = Issue.objects.filter(pk=pk).first()
+    project = issue.project
+    #根据status(等待测试),反向获取主机更新表对象列表
+    wait_host=issue.host_issue_set.filter(status="2")
+    #取出主机对象列表
+    server_list=[i.hostip for i in wait_host]
+    #nginx上线这些后端主机：
+    #nginx_status = nginx_again(project.nginx_host.all(),project.nginx_conf, server_list,type="up")
+#上线执行成功
+    if nginx_status:
+        wait_host.update(status="3")
+        issue.status="4"    #更新完成
+        issue.save()
+        return JsonResponse({"status":0,"msg":"更新成功!"})
+    else:
+        wait_host.update(status="5")
+        issue.status="5"    #更新失败!
+        issue.save()
+        return JsonResponse({"status":1,"msg":"更新失败!"})
+
+def go_back(request,pk):
+    '''
+    回滚操作：（需要回滚的状态为  等待测试、测试通过 因为这两个状态项目已经变更）
+        找到响应的主机
+        找到主机上的备份,解压
+    :param request:
+    :param pk: issue pk
+    :return:
+    '''
+    issue=Issue.objects.filter(pk=pk).first()
+#找到需要响应的主机对象 (主机更新表status状态为2（等待测试）  3(测试通过) )
+    wait_Host_issue=Host_Issue.objects.filter(issue=issue,status__in=["2","3"])
+    host_list=[i.host for i in wait_Host_issue]
+    #执行回滚方法(传入主机列表对象,项目名,备份文件名（issue表upload_path字段）)
+    back_status=back_server(host_list,issue.project.name,issue.upload_path)
+    if back_status:
+        issue.status="6"    #回滚成功
+        issue.save()
+        wait_Host_issue.update(status="6")
+        return JsonResponse({"status":0,"msg":"回滚成功!"})
+    else:
+        issue.status = "7"  # 回滚成功
+        issue.save()
+        wait_Host_issue.update(status="7")
+        return JsonResponse({"status": 1, "msg": "回滚失败!"})
+
+def back_server(host_list,name,t):
+    '''
+    回滚方法
+    :param host_list:主机列表对象
+    :param name: 项目名
+    :param t: 文件名（issue表upload_path字段）
+    :return:
+    '''
+    tasks=[{"action":{"module":"shell","args":"tar xf {}/{}/{}.tar.gz -C /".format(server_backup_path,name,t)}}]
+    status=ansible_helper(host_list,tasks)
+    return True if status else False

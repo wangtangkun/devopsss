@@ -1,0 +1,99 @@
+{#  更新详情页 #}
+{#竖着展示  tr为一行，多写tr,具体参考下面tr td使用#}
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="box">
+
+                <div class="box-body table-responsive no-padding">
+                    <table class="table table-hover text-center">
+                        <tr>
+                            <td>项目名称</td>
+                            <td>{{ issue.project.name }}</td>
+                        </tr>
+                        <tr class="text-center">
+                            <td>负责人</td>
+                        <td>
+                            {% for foo in issue.project.boss.all %}
+                                {{ foo.name }}
+                            {% endfor %}
+                        </td>
+
+                        </tr>
+                        <tr class="text-center">
+                            <td>运维</td>
+                            <td>
+                            {% for foo in issue.project.ops_user.all %}
+                                {{ foo.name }}
+                            {% endfor %}
+                            </td>
+                        </tr>
+                        <tr class="text-center">
+                            <td>测试</td>
+                            <td>
+                            {% for foo in issue.project.test_user.all %}
+                                {{ foo.name }}
+                            {% endfor %}
+                        </td>
+                        </tr>
+                        <tr class="text-center">
+                            <td>开发</td>
+                            <td>
+                            {% for foo in issue.project.dev_user.all %}
+                                {{ foo.name }}
+                            {% endfor %}
+                        </td>
+                        </tr>
+                        <tr class="text-center">
+                            <td>发布人员</td>
+                            <td>{{ issue.user.name }}</td>
+                        </tr>
+                        <tr class="text-center">
+                            <td>发布状态</td>
+                            <td>{{ issue.get_status_display }}</td>
+                        </tr>
+                        <tr class="text-center">
+                            <td>发布时间</td>
+                            <td>{{ issue.create_time|date:"Y-m-d h:i:s" }}</td>
+                        </tr>
+                        <tr class="text-center">
+                            <td>发布详情</td>
+                            <td>
+                                <table class="table table-hover text-center">
+                                <tr>
+                                    <td>主机名:</td>
+                                    <td>主机ip:</td>
+                                    <td>主机状态:</td>
+                                </tr>
+                                    {% for foo in issue.host_issue_set.all %}
+                                        <tr>
+
+                                        <td>{{ foo.host.name }}</td>
+
+                                        <td>{{ foo.host.hostip }}</td>
+
+                                        <td>{{ foo.get_status_display }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                    
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <!-- /.box-body -->
+            </div>
+            <!-- /.box -->
+        <div>
+                <ul class="pagination pagination-sm no-margin pull-right">
+                    {{ page_html|safe }}
+                </ul>
+                <!-- /.box -->
+            </div>
+
+
+        </div>
+    </div>
+
+
+
+
