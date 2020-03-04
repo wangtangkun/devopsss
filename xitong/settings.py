@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'qtgkkt65lvs+fywu+8_2^q3w&7$cvp$0i*9!0wy9uz8fepm8&9'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["*"]
 
@@ -211,6 +211,6 @@ server_backup_path="/opt/devops_backup/"
 
 
 
-
+STATIC_ROOT= "/opt/static/django"
 STATIC_URL = '/static/'
 STATICFILES_DIRS=[os.path.join(BASE_DIR,'static')]
